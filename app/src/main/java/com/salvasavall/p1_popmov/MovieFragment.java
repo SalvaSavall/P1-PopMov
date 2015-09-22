@@ -1,7 +1,10 @@
 package com.salvasavall.p1_popmov;
 
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -16,6 +19,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.GridView;
+import android.widget.Toast;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -36,22 +40,34 @@ import java.util.ArrayList;
 public class MovieFragment extends Fragment {
 
     private MovieAdapter movieAdapter;
-    ArrayList<Movie> movies = new ArrayList<Movie>();
+    ArrayList<Movie> movies = new ArrayList<>();
     String oldSortBy = null;
 
     public MovieFragment() {
     }
 
     @Override
-    public void onCreate(Bundle savedInstaceState) {
-        super.onCreate(savedInstaceState);
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
         setHasOptionsMenu(true);
+
+        if(savedInstanceState!=null && savedInstanceState.containsKey("movies")
+                && savedInstanceState.containsKey("sortBy")) {
+            movies = savedInstanceState.getParcelableArrayList("movies");
+            oldSortBy = savedInstanceState.getString("sortBy");
+        }
     }
 
     @Override
     public void onStart() {
         super.onStart();
-        updateMovies();
+
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
+        String sortBy = prefs.getString(getString(R.string.key_sort_settings),
+                getString(R.string.default_sort_settings));
+        if(oldSortBy == null || !oldSortBy.equals(sortBy)) {
+            updateMovies(sortBy);
+        }
     }
 
     @Override
@@ -63,7 +79,7 @@ public class MovieFragment extends Fragment {
     public boolean onOptionsItemSelected(MenuItem item) {
         switch(item.getItemId()) {
             case R.id.action_refresh:
-                updateMovies();
+                updateMovies(oldSortBy);
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
@@ -84,7 +100,7 @@ public class MovieFragment extends Fragment {
             public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
                 Movie movieClicked = movies.get(i);
                 Intent detailIntent = new Intent(getContext(), MovieDetail.class);
-                detailIntent.putExtra("movie",movieClicked);
+                detailIntent.putExtra("movie", movieClicked);
                 startActivity(detailIntent);
             }
         });
@@ -92,15 +108,29 @@ public class MovieFragment extends Fragment {
         return rootView;
     }
 
-    private void updateMovies() {
-        FetchMoviesTask moviesTask = new FetchMoviesTask();
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
-        String sortBy = prefs.getString(getString(R.string.key_sort_settings),
-                getString(R.string.default_sort_settings));
-        if(oldSortBy == null || !oldSortBy.equals(sortBy)) {
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        outState.putParcelableArrayList("movies",movies);
+        outState.putString("sortBy",oldSortBy);
+        super.onSaveInstanceState(outState);
+    }
+
+    private boolean isNetworkAvailable() {
+        ConnectivityManager connectivityManager =
+                (ConnectivityManager) getActivity().getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+
+        return (activeNetworkInfo != null && activeNetworkInfo.isConnected());
+    }
+
+    private void updateMovies(String sortBy) {
+        if(isNetworkAvailable()) {
+            FetchMoviesTask moviesTask = new FetchMoviesTask();
             moviesTask.execute(sortBy);
+            oldSortBy = sortBy;
+        } else {
+            Toast.makeText(getActivity(), getString(R.string.message_without_connection), Toast.LENGTH_LONG).show();
         }
-        oldSortBy = sortBy;
     }
 
     public class FetchMoviesTask extends AsyncTask<String, Void, ArrayList<Movie>> {
@@ -121,7 +151,7 @@ public class MovieFragment extends Fragment {
             JSONObject moviesJson = new JSONObject(moviesJsonStr);
             JSONArray moviesJArray = moviesJson.getJSONArray(MDB_RESULTS);
 
-            ArrayList<Movie> movieArr = new ArrayList<Movie>();
+            ArrayList<Movie> movieArr = new ArrayList<>();
 
             for(int i = 0; i < moviesJArray.length(); i++) {
                 JSONObject movieJ = moviesJArray.getJSONObject(i);
