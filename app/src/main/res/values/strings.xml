@@ -20,5 +20,5 @@
 
     <string name="poster_thumbnail_description">Poster thumbnail</string>
 
-    <string name="api_key_moviedb" translatable="false">PUT YOR API KEY HERE!!</string>
+    <string name="api_key_moviedb" translatable="false">8e58ed4c23f486b5d98511f230863092</string>
 </resources>

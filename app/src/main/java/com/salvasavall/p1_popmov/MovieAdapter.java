@@ -11,7 +11,7 @@ import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
 
-/**
+/*
  * Created by Salva on 26/08/2015.
  */
 public class MovieAdapter extends ArrayAdapter<Movie> {
@@ -38,7 +38,10 @@ public class MovieAdapter extends ArrayAdapter<Movie> {
             posterView = (ImageView) convertView;
         }
 
-        Picasso.with(mContext).load(movie.getPoster()).into(posterView);
+        Picasso.with(mContext).load(movie.getPoster())
+                .placeholder(R.drawable.ic_sync_black_24dp)
+                .error(R.drawable.ic_image_error)
+                .into(posterView);
 
         return posterView;
     }
